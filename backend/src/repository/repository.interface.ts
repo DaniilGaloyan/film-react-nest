@@ -2,6 +2,8 @@ import { FilmDto, ScheduleDto } from '../films/dto/films.dto';
 import { FilmDocument } from './film.schema';
 import { OrderDocument } from './order.schema';
 
+export const REPOSITORY_TOKEN = 'IRepository';
+
 export interface IRepository {
   // Возвращает все фильмы
   findAll(): Promise<FilmDto[]>;

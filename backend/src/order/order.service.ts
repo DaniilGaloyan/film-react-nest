@@ -1,6 +1,9 @@
-﻿import { Injectable, BadRequestException } from '@nestjs/common';
+﻿import { Injectable, Inject, BadRequestException } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
-import { MemoryRepository } from '../repository/memory.repository';
+import {
+  IRepository,
+  REPOSITORY_TOKEN,
+} from '../repository/repository.interface';
 import { FilmDocument } from '../repository/film.schema';
 import { ScheduleDocument } from '../repository/schedule.schema';
 import {
@@ -12,11 +15,16 @@ import {
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly repository: MemoryRepository) {}
+  constructor(
+    @Inject(REPOSITORY_TOKEN) private readonly repository: IRepository,
+  ) {}
 
   async createOrder(dto: CreateOrderDto): Promise<CreateOrderResponseDto> {
     // Проверка дублей мест внутри одного заказа
     this.assertNoDuplicateTickets(dto.tickets);
+
+    // Если хотя бы один билет уже занят — ни один не будет сохранён в БД
+    await this.validateAllTicketsAvailable(dto.tickets);
 
     // Валидация каждого билета и сбор новых занятых мест
     const takenBySession = new Map<
@@ -32,12 +40,6 @@ export class OrderService {
       );
 
       const seatKey = `${ticket.row}:${ticket.seat}`;
-
-      if (session.taken.includes(seatKey)) {
-        throw new BadRequestException(
-          `Seat ${seatKey} is already taken for session ${ticket.session}`,
-        );
-      }
 
       const groupKey = `${ticket.film}:${ticket.session}`;
       let group = takenBySession.get(groupKey);
@@ -85,6 +87,27 @@ export class OrderService {
       total: items.length,
       items,
     };
+  }
+
+  // Проверка принципа «всё или ничего»
+    // Если хотя бы один билет уже занят — ни один не будет сохранён в БД
+  private async validateAllTicketsAvailable(
+    tickets: TicketDto[],
+  ): Promise<void> {
+    for (const ticket of tickets) {
+      const { session } = await this.getFilmSessionOrThrow(
+        ticket.film,
+        ticket.session,
+      );
+
+      const seatKey = `${ticket.row}:${ticket.seat}`;
+
+      if (session.taken.includes(seatKey)) {
+        throw new BadRequestException(
+          `Seat ${seatKey} is already taken for session ${ticket.session}`,
+        );
+      }
+    }
   }
 
   // Проверка дублей мест внутри одного заказа

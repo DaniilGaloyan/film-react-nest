@@ -5,31 +5,26 @@ import { MemoryRepository } from './memory.repository';
 import { MongoRepository } from './mongo.repository';
 import { FilmDocument, FilmSchema } from './film.schema';
 import { OrderDocument, OrderSchema } from './order.schema';
+import { REPOSITORY_TOKEN } from './repository.interface';
 
 /**
  * Модуль репозитория — точка выбора хранилища
  *
- * Реализация определяется переменной USE_MONGODB:
+ * Реализация определяется флагом useMongo, который приходит из main.ts:
  *  true  -  данные хранятся в MongoDB
  *  false -  данные хранятся в памяти
  */
 @Module({})
 export class RepositoryModule {
-  static forRoot(): DynamicModule {
-    const useMongo = process.env.USE_MONGODB === 'true';
+  static forRoot(useMongo: boolean): DynamicModule {
+    return useMongo ? this.forMongo() : this.forMemory();
+  }
 
-    if (!useMongo) {
-      return {
-        module: RepositoryModule,
-        providers: [MemoryRepository],
-        exports: [MemoryRepository],
-      };
-    }
-
+  // Режим MongoDB
+  private static forMongo(): DynamicModule {
     return {
       module: RepositoryModule,
       imports: [
-        ConfigModule,
         MongooseModule.forRootAsync({
           imports: [ConfigModule],
           inject: [ConfigService],
@@ -43,14 +38,29 @@ export class RepositoryModule {
         ]),
       ],
       providers: [
+        MongoRepository,
         {
-          provide: MemoryRepository,
-          useClass: MongoRepository,
+          provide: REPOSITORY_TOKEN,
+          useExisting: MongoRepository,
         },
       ],
-      exports: [MemoryRepository],
+      exports: [REPOSITORY_TOKEN],
+    };
+  }
+
+  // Режим в памяти
+  private static forMemory(): DynamicModule {
+    return {
+      module: RepositoryModule,
+      imports: [],
+      providers: [
+        MemoryRepository,
+        {
+          provide: REPOSITORY_TOKEN,
+          useExisting: MemoryRepository,
+        },
+      ],
+      exports: [REPOSITORY_TOKEN],
     };
   }
 }
-
-export const REPOSITORY_MODULE = RepositoryModule.forRoot();

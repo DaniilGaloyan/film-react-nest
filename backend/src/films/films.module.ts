@@ -1,11 +1,16 @@
-import { Module } from '@nestjs/common';
+import { DynamicModule, Module } from '@nestjs/common';
 import { FilmsController } from './films.controller';
 import { FilmsService } from './films.service';
-import { REPOSITORY_MODULE } from '../repository/repository.module';
+import { RepositoryModule } from '../repository/repository.module';
 
-@Module({
-  imports: [REPOSITORY_MODULE],
-  controllers: [FilmsController],
-  providers: [FilmsService],
-})
-export class FilmsModule {}
+@Module({})
+export class FilmsModule {
+  static register(useMongo: boolean): DynamicModule {
+    return {
+      module: FilmsModule,
+      imports: [RepositoryModule.forRoot(useMongo)],
+      controllers: [FilmsController],
+      providers: [FilmsService],
+    };
+  }
+}

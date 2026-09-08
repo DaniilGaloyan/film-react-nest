@@ -1,11 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { MemoryRepository } from '../repository/memory.repository';
-import { GetFilmsResponseDto } from './dto/films.dto';
-import { GetScheduleResponseDto } from './dto/films.dto';
+import { Injectable, Inject } from '@nestjs/common';
+import {
+  IRepository,
+  REPOSITORY_TOKEN,
+} from '../repository/repository.interface';
+import { GetFilmsResponseDto, GetScheduleResponseDto } from './dto/films.dto';
 
 @Injectable()
 export class FilmsService {
-  constructor(private readonly repository: MemoryRepository) {}
+  constructor(
+    @Inject(REPOSITORY_TOKEN) private readonly repository: IRepository,
+  ) {}
 
   // Возвращает список всех фильмов
   async findAll(): Promise<GetFilmsResponseDto> {
