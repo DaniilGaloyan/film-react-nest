@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import {
-  IRepository,
+  FilmsRepository,
   REPOSITORY_TOKEN,
 } from '../repository/repository.interface';
 import { GetFilmsResponseDto, GetScheduleResponseDto } from './dto/films.dto';
@@ -8,7 +8,7 @@ import { GetFilmsResponseDto, GetScheduleResponseDto } from './dto/films.dto';
 @Injectable()
 export class FilmsService {
   constructor(
-    @Inject(REPOSITORY_TOKEN) private readonly repository: IRepository,
+    @Inject(REPOSITORY_TOKEN) private readonly repository: FilmsRepository,
   ) {}
 
   // Возвращает список всех фильмов
@@ -22,11 +22,11 @@ export class FilmsService {
 
   // Возвращает расписание конкретного фильма
   async findOne(id: string): Promise<GetScheduleResponseDto> {
-    const result = await this.repository.findOne(id);
+    const schedule = await this.repository.findSchedule(id);
 
     return {
-      total: result.schedule.length,
-      items: result.schedule,
+      total: schedule.length,
+      items: schedule,
     };
   }
 }

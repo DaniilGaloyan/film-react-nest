@@ -1,26 +1,31 @@
 import { FilmDto, ScheduleDto } from '../films/dto/films.dto';
-import { FilmDocument } from './film.schema';
-import { OrderDocument } from './order.schema';
+import { Film } from './film.entity';
+import { Order } from './order.entity';
 
-export const REPOSITORY_TOKEN = 'IRepository';
+export const REPOSITORY_TOKEN = 'FILMS_REPOSITORY';
 
-export interface IRepository {
+// Новые занятые места одного сеанса (в виде «ряд:место»)
+export interface SeatUpdate {
+  // Идентификатор фильма
+  filmId: string;
+
+  // Идентификатор сеанса
+  sessionId: string;
+
+  // Новые занятые места; существующие места добавятся к ним при сохранении
+  seats: string[];
+}
+
+export interface FilmsRepository {
   // Возвращает все фильмы
   findAll(): Promise<FilmDto[]>;
 
-  // Возвращает фильм и его расписание
-  findOne(filmId: string): Promise<{ film: FilmDto; schedule: ScheduleDto[] }>;
+  // Возвращает расписание фильма
+  findSchedule(filmId: string): Promise<ScheduleDto[]>;
 
-  // Сохраняет одно бронирование
-  saveOrder(order: OrderDocument): Promise<void>;
+  // Возвращает фильм вместе с сеансами для проверки и бронирования мест
+  getFilmById(filmId: string): Promise<Film | undefined>;
 
-  // Возвращает документ фильма
-  getFilmById(filmId: string): Promise<FilmDocument | undefined>;
-
-  // Обновляет список занятых мест в конкретном сеансе фильма
-  updateTakenSeats(
-    filmId: string,
-    sessionId: string,
-    taken: string[],
-  ): Promise<void>;
+  // Сохраняет заказы и отмечает места занятыми, если нет ошибок
+  saveOrders(orders: Order[], seatUpdates: SeatUpdate[]): Promise<void>;
 }
