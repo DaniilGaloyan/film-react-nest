@@ -16,16 +16,30 @@ export interface SeatUpdate {
   seats: string[];
 }
 
+// Результат сохранения заказов: успех или причина отказа
+export type SaveOrdersResult =
+  | { success: true }
+  | { success: false; reason: 'session-not-found'; sessionId: string }
+  | {
+      success: false;
+      reason: 'seat-already-taken';
+      sessionId: string;
+      seat: string;
+    };
+
 export interface FilmsRepository {
   // Возвращает все фильмы
   findAll(): Promise<FilmDto[]>;
 
-  // Возвращает расписание фильма
-  findSchedule(filmId: string): Promise<ScheduleDto[]>;
+  // Возвращает расписание фильма или null, если фильм не найден
+  findSchedule(filmId: string): Promise<ScheduleDto[] | null>;
 
   // Возвращает фильм вместе с сеансами для проверки и бронирования мест
   getFilmById(filmId: string): Promise<Film | undefined>;
 
   // Сохраняет заказы и отмечает места занятыми, если нет ошибок
-  saveOrders(orders: Order[], seatUpdates: SeatUpdate[]): Promise<void>;
+  saveOrders(
+    orders: Order[],
+    seatUpdates: SeatUpdate[],
+  ): Promise<SaveOrdersResult>;
 }

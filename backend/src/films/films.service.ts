@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import {
   FilmsRepository,
   REPOSITORY_TOKEN,
@@ -23,6 +23,10 @@ export class FilmsService {
   // Возвращает расписание конкретного фильма
   async findOne(id: string): Promise<GetScheduleResponseDto> {
     const schedule = await this.repository.findSchedule(id);
+
+    if (!schedule) {
+      throw new NotFoundException(`Film with id ${id} not found`);
+    }
 
     return {
       total: schedule.length,

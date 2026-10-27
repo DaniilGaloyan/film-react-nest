@@ -1,4 +1,9 @@
-import { Injectable, Inject, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import {
   FilmsRepository,
@@ -84,7 +89,21 @@ export class OrderService {
       });
     }
 
-    await this.repository.saveOrders(orders, [...seatUpdates.values()]);
+    const result = await this.repository.saveOrders(orders, [
+      ...seatUpdates.values(),
+    ]);
+
+    if (result.success === false) {
+      if (result.reason === 'seat-already-taken') {
+        throw new BadRequestException(
+          `Seat ${result.seat} is already taken for session ${result.sessionId}`,
+        );
+      }
+
+      throw new NotFoundException(
+        `Session with id ${result.sessionId} not found`,
+      );
+    }
 
     return {
       total: items.length,

@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
@@ -11,7 +7,11 @@ import { FilmDto, ScheduleDto } from '../films/dto/films.dto';
 import { Film } from './film.entity';
 import { Order } from './order.entity';
 import { Schedule } from './schedule.entity';
-import { FilmsRepository, SeatUpdate } from './repository.interface';
+import {
+  FilmsRepository,
+  SaveOrdersResult,
+  SeatUpdate,
+} from './repository.interface';
 
 @Injectable()
 export class AppRepository implements FilmsRepository {
@@ -34,12 +34,12 @@ export class AppRepository implements FilmsRepository {
     return films.map((film) => this.toFilmDto(film));
   }
 
-  // Возвращает расписание фильма
-  async findSchedule(filmId: string): Promise<ScheduleDto[]> {
+  // Возвращает расписание фильма или null, если фильм не найден
+  async findSchedule(filmId: string): Promise<ScheduleDto[] | null> {
     const film = await this.findFilmWithSchedules(filmId);
 
     if (!film) {
-      throw new NotFoundException(`Film with id ${filmId} not found`);
+      return null;
     }
 
     return film.schedules.map((schedule) => this.toScheduleDto(schedule));
@@ -51,8 +51,11 @@ export class AppRepository implements FilmsRepository {
   }
 
   // Сохраняет заказы и отмечает места занятыми, если нет ошибок
-  async saveOrders(orders: Order[], seatUpdates: SeatUpdate[]): Promise<void> {
-    await this.dataSource.transaction(async (manager) => {
+  async saveOrders(
+    orders: Order[],
+    seatUpdates: SeatUpdate[],
+  ): Promise<SaveOrdersResult> {
+    return this.dataSource.transaction(async (manager) => {
       const scheduleRepository = manager.getRepository(Schedule);
       const orderRepository = manager.getRepository(Order);
 
@@ -75,9 +78,11 @@ export class AppRepository implements FilmsRepository {
         });
 
         if (!schedule || schedule.filmId !== update.filmId) {
-          throw new NotFoundException(
-            `Session with id ${update.sessionId} not found`,
-          );
+          return {
+            success: false,
+            reason: 'session-not-found',
+            sessionId: update.sessionId,
+          };
         }
 
         const conflict = update.seats.find((seat) =>
@@ -85,9 +90,12 @@ export class AppRepository implements FilmsRepository {
         );
 
         if (conflict) {
-          throw new BadRequestException(
-            `Seat ${conflict} is already taken for session ${update.sessionId}`,
-          );
+          return {
+            success: false,
+            reason: 'seat-already-taken',
+            sessionId: update.sessionId,
+            seat: conflict,
+          };
         }
 
         currentTaken.set(update.sessionId, schedule.taken);
@@ -107,6 +115,8 @@ export class AppRepository implements FilmsRepository {
           },
         );
       }
+
+      return { success: true };
     });
   }
 
