@@ -5,7 +5,9 @@ import {
   Min,
   ArrayMinSize,
   IsEmail,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class TicketDto {
   // Идентификатор фильма
@@ -48,6 +50,8 @@ export class CreateOrderDto {
   // Массив билетов для бронирования
   @IsArray()
   @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => TicketDto)
   tickets: TicketDto[];
 }
 

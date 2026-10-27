@@ -1,66 +1,52 @@
-import { DynamicModule, Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MemoryRepository } from './memory.repository';
-import { MongoRepository } from './mongo.repository';
-import { FilmDocument, FilmSchema } from './film.schema';
-import { OrderDocument, OrderSchema } from './order.schema';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
+
+import { AppRepository } from './app.repository';
+import { Film } from './film.entity';
+import { Order } from './order.entity';
 import { REPOSITORY_TOKEN } from './repository.interface';
+import { Schedule } from './schedule.entity';
 
-/**
- * Модуль репозитория — точка выбора хранилища
- *
- * Реализация определяется флагом useMongo, который приходит из main.ts:
- *  true  -  данные хранятся в MongoDB
- *  false -  данные хранятся в памяти
- */
-@Module({})
-export class RepositoryModule {
-  static forRoot(useMongo: boolean): DynamicModule {
-    return useMongo ? this.forMongo() : this.forMemory();
-  }
+// Модуль репозитория
+@Module({
+  imports: [
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): TypeOrmModuleOptions => {
+        const driver = configService.get<string>('DATABASE_DRIVER');
+        if (driver !== 'postgres') {
+          throw new Error(
+            `DATABASE_DRIVER должен быть равен "postgres", получено: ${driver}`,
+          );
+        }
 
-  // Режим MongoDB
-  private static forMongo(): DynamicModule {
-    return {
-      module: RepositoryModule,
-      imports: [
-        MongooseModule.forRootAsync({
-          imports: [ConfigModule],
-          inject: [ConfigService],
-          useFactory: (configService: ConfigService) => ({
-            uri: configService.get<string>('DATABASE_URL'),
-          }),
-        }),
-        MongooseModule.forFeature([
-          { name: FilmDocument.name, schema: FilmSchema },
-          { name: OrderDocument.name, schema: OrderSchema },
-        ]),
-      ],
-      providers: [
-        MongoRepository,
-        {
-          provide: REPOSITORY_TOKEN,
-          useExisting: MongoRepository,
-        },
-      ],
-      exports: [REPOSITORY_TOKEN],
-    };
-  }
+        const databaseUrl = new URL(
+          configService.getOrThrow<string>('DATABASE_URL'),
+        );
 
-  // Режим в памяти
-  private static forMemory(): DynamicModule {
-    return {
-      module: RepositoryModule,
-      imports: [],
-      providers: [
-        MemoryRepository,
-        {
-          provide: REPOSITORY_TOKEN,
-          useExisting: MemoryRepository,
-        },
-      ],
-      exports: [REPOSITORY_TOKEN],
-    };
-  }
-}
+        return {
+          type: 'postgres',
+          host: databaseUrl.hostname,
+          port: Number(databaseUrl.port) || 5432,
+          database: databaseUrl.pathname.replace(/^\//, ''),
+          username: configService.getOrThrow<string>('DATABASE_USERNAME'),
+          password: configService.getOrThrow<string>('DATABASE_PASSWORD'),
+          entities: [Film, Schedule, Order],
+          synchronize: true,
+        };
+      },
+    }),
+    TypeOrmModule.forFeature([Film]),
+  ],
+  providers: [
+    AppRepository,
+    {
+      provide: REPOSITORY_TOKEN,
+      useExisting: AppRepository,
+    },
+  ],
+  exports: [REPOSITORY_TOKEN],
+})
+export class RepositoryModule {}

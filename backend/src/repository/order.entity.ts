@@ -1,42 +1,40 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-@Schema({ collection: 'orders', timestamps: true })
-export class OrderDocument {
+@Entity('orders')
+export class Order {
   // Уникальный идентификатор бронирования
-  @Prop({ required: true })
+  @PrimaryColumn('uuid')
   id: string;
 
   // Email пользователя
-  @Prop({ required: true })
+  @Column()
   email: string;
 
   // Телефон пользователя
-  @Prop({ required: true })
+  @Column()
   phone: string;
 
   // Идентификатор фильма
-  @Prop({ required: true })
+  @Column('uuid')
   film: string;
 
   // Идентификатор сеанса
-  @Prop({ required: true })
+  @Column('uuid')
   session: string;
 
   // Дата и время сеанса
-  @Prop({ required: true })
+  @Column()
   daytime: string;
 
   // Номер ряда выбранного места
-  @Prop({ required: true })
+  @Column('integer')
   row: number;
 
   // Номер места в ряду
-  @Prop({ required: true })
+  @Column('integer')
   seat: number;
 
   // Стоимость билета
-  @Prop({ required: true })
+  @Column('double precision')
   price: number;
 }
-
-export const OrderSchema = SchemaFactory.createForClass(OrderDocument);

@@ -25,6 +25,9 @@ export class FilmDto {
 
   // Путь к обложке фильма
   cover: string;
+
+  // Список сеансов фильма
+  schedule: ScheduleDto[];
 }
 
 export class ScheduleDto {
